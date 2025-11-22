@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <title>Gestor EduPlay 4.0</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/4207/4207247.png">
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/4207/4207247.png">
+
+    <style>
+        :root { --bg: #0f172a; --card-bg: #1e293b; --card-highlight: #334155; --text: #f8fafc; --text-muted: #94a3b8; --primary: #3b82f6; --success: #22c55e; --danger: #ef4444; --warning: #eab308; --orange: #f97316; --purple: #a855f7; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg); color: var(--text); padding-bottom: 100px; font-size: 14px; }
+        .hidden { display: none !important; }
+        .flex { display: flex; gap: 10px; }
+        .flex-col { display: flex; flex-direction: column; gap: 10px; }
+        .w-full { width: 100%; }
+        .text-center { text-align: center; }
+        .font-bold { font-weight: 600; }
+        .text-xs { font-size: 12px; }
+        .mt-2 { margin-top: 8px; }
+        .mb-2 { margin-bottom: 8px; }
+        .p-4 { padding: 16px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .card { background: var(--card-bg); padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        label { display: block; color: var(--text-muted); font-size: 12px; margin-bottom: 4px; }
+        .input { width: 100%; background: #020617; border: 1px solid var(--card-highlight); color: white; padding: 14px; border-radius: 10px; font-size: 16px; margin-bottom: 12px; }
+        .input:focus { border-color: var(--primary); outline: none; }
+        .btn { border: none; padding: 14px; border-radius: 10px; font-weight: 600; color: white; width: 100%; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; }
+        .bg-blue { background: var(--primary); } .bg-green { background: var(--success); } .bg-red { background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid var(--danger); } .bg-slate { background: var(--card-highlight); }
+        .tag { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+        .tag-ok { background: rgba(34,197,94,0.15); color: #86efac; } .tag-warn { background: rgba(234,179,8,0.15); color: #fde047; } .tag-danger { background: rgba(239,68,68,0.15); color: #fca5a5; }
+        .nav-bar { position: fixed; bottom: 0; width: 100%; z-index: 50; background: #1e293b; border-top: 1px solid #334155; padding: 10px; display: flex; justify-content: space-around; }
+        .nav-btn { background: none; border: none; color: #64748b; font-size: 22px; padding: 8px 20px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; }
+        .nav-btn span { font-size: 10px; margin-top: 2px; }
+        .nav-btn.active { color: var(--primary); background: rgba(59,130,246,0.1); }
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 60; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(3px); }
+        .modal-content { background: var(--card-bg); border-radius: 16px; width: 100%; max-width: 400px; padding: 24px; border: 1px solid var(--card-highlight); }
+        #toast-container { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); z-index: 100; width: 90%; max-width: 400px; display: flex; flex-direction: column; gap: 8px; }
+        .toast { background: #1e293b; color: white; padding: 12px 16px; border-radius: 10px; border-left: 4px solid var(--primary); opacity: 0; transition: 0.3s; }
+        .toast.show { opacity: 1; }
+        /* PWA Install Button */
+        #install-btn { display: none; background: linear-gradient(45deg, #3b82f6, #8b5cf6); margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <div id="screen-login" style="position: fixed; inset:0; background: var(--bg); z-index: 99; display: flex; align-items: center; justify-content: center; padding: 20px;">
+        <div class="card w-full text-center" style="max-width: 320px;">
+            <h2 class="mb-2">Bem-vindo</h2>
+            <input type="tel" id="pin-input" class="input text-center" maxlength="4" placeholder="••••" style="font-size: 32px; letter-spacing: 5px;">
+            <button onclick="Login()" class="btn bg-blue">ENTRAR</button>
+        </div>
+    </div>
+
+    <div id="payment-modal" class="modal">
+        <div class="modal-content">
+            <h3 class="mb-2">Registrar Pagamento</h3>
+            <div id="credit-alert" class="hidden text-center p-2 mb-2 text-xs" style="background: rgba(168,85,247,0.2); color:#d8b4fe; border-radius:6px;">🎁 Crédito de R$ <span id="credit-val">0</span> aplicado.</div>
+            <label>Período</label><select id="pm-renewal-period" class="input" onchange="UpdatePaymentMath()"><option value="1">1 Mês</option><option value="3">3 Meses</option><option value="6">6 Meses</option><option value="12">12 Meses</option></select>
+            <div class="flex"><div class="w-full"><label>Valor Final</label><input id="pm-amount" class="input" type="number"></div><div class="w-full"><label>Data</label><input id="pm-date" class="input" type="date"></div></div>
+            <label>Custo a Aplicar</label><select id="pm-cost-type" class="input" onchange="UpdatePaymentMath()"><option value="renewal">Renovação</option><option value="activation">Ativação</option><option value="none">Sem Custo</option></select>
+            <div id="pm-math-summary" class="text-xs text-center text-muted mb-4 p-2 bg-slate" style="border-radius:6px;"></div>
+            <div class="flex"><button onclick="closePaymentModal()" class="btn bg-slate">Cancelar</button><button onclick="ConfirmPayment()" class="btn bg-green">Confirmar</button></div>
+        </div>
+    </div>
+    <div id="toast-container"></div>
+
+    <div class="container p-4">
+        <div class="flex justify-between items-center mb-4" style="justify-content: space-between;">
+            <div class="flex items-center"><span class="text-xl font-bold" style="color: var(--primary);">EduPlay</span></div>
+            <div class="tag tag-ok" id="total-clients">0</div>
+        </div>
+
+        <div id="view-home">
+            <div class="flex mb-4"><button onclick="OpenForm()" class="btn bg-blue">➕ Novo</button><button onclick="Nav('finance')" class="btn bg-slate">💲 Caixa</button></div>
+            <input type="text" id="search" onkeyup="Render()" class="input" placeholder="🔍 Buscar...">
+            <div id="list-container" class="flex-col"></div>
+        </div>
+
+        <div id="view-finance" class="hidden">
+            <h2 class="mb-4">Financeiro</h2>
+            <div class="flex mb-4"><button onclick="RenderFinance('month')" class="btn bg-slate" style="padding:8px;">Mês</button><button onclick="RenderFinance('year')" class="btn bg-slate" style="padding:8px;">Ano</button></div>
+            <div class="card text-center" style="border-color: var(--success);"><p class="text-xs text-success">LUCRO LÍQUIDO</p><h1 id="fin-profit" style="font-size:32px; color:var(--success)">R$ 0</h1></div>
+            <div class="flex mt-2"><div class="card w-full"><p class="text-xs text-muted">Receita</p><h3 id="fin-rev" style="color:#4ade80">R$ 0</h3></div><div class="card w-full"><p class="text-xs text-muted">Custo</p><h3 id="fin-cost" style="color:#f87171">R$ 0</h3></div></div>
+            <h3 class="mt-4 mb-2 text-xs text-muted uppercase">Por Servidor</h3>
+            <div id="fin-by-server-container" class="flex-col"></div>
+        </div>
+
+        <div id="view-expenses" class="hidden">
+            <h2 class="mb-4">Despesas</h2>
+            <div class="card"><input id="e-desc" class="input" placeholder="Descrição"><div class="flex"><input id="e-amount" class="input" type="number" placeholder="Valor"><input id="e-date" class="input" type="date"></div><button onclick="SaveExpense()" class="btn bg-red">Salvar</button></div>
+            <div id="expense-list-container" class="flex-col mt-4"></div>
+        </div>
+
+        <div id="view-backup" class="hidden">
+            <h2 class="mb-4">Opções</h2>
+            <button id="install-btn" class="btn" onclick="InstallApp()">📲 Instalar App</button>
+            <div class="card"><h3 class="mb-2 text-primary">Servidores</h3><div class="flex"><input id="new-server-name" class="input" placeholder="Nome"><button onclick="AddServer()" class="btn bg-green" style="width:auto">Add</button></div><div id="server-list-container" class="flex-col mt-2"></div></div>
+            <div class="card"><h3 class="mb-2 text-purple">Backup</h3><div class="flex-col"><button onclick="DownloadBackup()" class="btn bg-blue">Baixar (.json)</button><input type="file" id="backup-file" class="hidden" onchange="UploadBackup(this)"><button onclick="$('backup-file').click()" class="btn bg-slate">Restaurar</button></div></div>
+            <div class="card"><h3 class="mb-2 text-warning">Config</h3><label>PIX</label><input id="cfg-pix-key" class="input"><label>Msg</label><textarea id="msg-template" class="input"></textarea><button onclick="SaveConfig()" class="btn bg-blue">Salvar</button></div>
+        </div>
+
+        <div id="view-form" class="hidden">
+            <h2 id="form-title" class="mb-4">Cliente</h2>
+            <input type="hidden" id="f-id">
+            <div class="card"><label>Nome</label><input id="f-name" class="input"><label>WhatsApp</label><input id="f-phone" class="input" type="tel"><div id="f-server-div"></div></div>
+            <div class="card" style="border-color:var(--purple)"><label>Obs</label><textarea id="f-notes" class="input"></textarea><label>Crédito (R$)</label><input id="f-credit" class="input" type="number"></div>
+            <div class="card">
+                <div class="flex"><div class="w-full"><label style="color:#4ade80">Venda</label><input id="f-price" class="input" type="number" oninput="CalcMargin()"></div><div class="w-full"><label style="color:white">Margem</label><input id="f-margin" class="input" readonly style="border-color:var(--card-highlight)"></div></div>
+                <div class="flex"><div class="w-full"><label style="color:#f87171">Custo Ativ.</label><input id="f-act-cost" class="input" type="number" oninput="CalcMargin()"></div><div class="w-full"><label style="color:#f87171">Custo Renov.</label><input id="f-ren-cost" class="input" type="number" oninput="CalcMargin()"></div></div>
+            </div>
+            <div class="card"><div class="flex"><div class="w-full"><label>Ativação</label><input id="f-date" class="input" type="date" onchange="$('f-expire').value=AddMonths(this.value,1)"></div><div class="w-full"><label>Vencimento</label><input id="f-expire" class="input" type="date"></div></div></div>
+            <div class="flex mt-4"><button onclick="Nav('home')" class="btn bg-slate">Cancelar</button><button onclick="SaveClient()" class="btn bg-blue">Salvar</button></div>
+            <div id="danger-zone" class="hidden mt-4"><button onclick="HardDelete()" class="btn" style="background:#7f1d1d;color:#fca5a5;border:1px solid #ef4444">⛔ EXCLUIR TUDO</button></div>
+        </div>
+    </div>
+
+    <div class="nav-bar">
+        <button onclick="Nav('home')" class="nav-btn active"><span>👥</span><span>Clientes</span></button>
+        <button onclick="Nav('finance')" class="nav-btn"><span>📊</span><span>Caixa</span></button>
+        <button onclick="Nav('expenses')" class="nav-btn"><span>💸</span><span>Desp.</span></button>
+        <button onclick="Nav('backup')" class="nav-btn"><span>⚙️</span><span>Opções</span></button>
+    </div>
+
+    <script>
+        // --- PWA INSTALL LOGIC ---
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault(); deferredPrompt = e;
+            document.getElementById('install-btn').style.display = 'flex';
+        });
+        async function InstallApp() {
+            if(deferredPrompt) { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; deferredPrompt = null; }
+        }
+        if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
+
+        // --- CORE LOGIC ---
+        const $ = id => document.getElementById(id);
+        const ToBRL = v => Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+        const AddMonths = (d,m) => { let x=new Date(d); x.setMonth(x.getMonth()+parseInt(m)); if(x.getDate()!==new Date(d).getDate())x.setDate(0); return x.toISOString().split('T')[0]; }
+        const IsWithin = (d,p) => { let x=new Date(d), n=new Date(); x.setHours(0,0,0,0); n.setHours(0,0,0,0); let s=new Date(n); if(p==='month')s.setMonth(n.getMonth()-1); if(p==='year')s.setFullYear(n.getFullYear()-1); return x>=s && x<=n; }
+        
+        let db = JSON.parse(localStorage.getItem('edu_db')||'[]'), exp = JSON.parse(localStorage.getItem('edu_exp')||'[]');
+        let srv = JSON.parse(localStorage.getItem('edu_srv')||'[]'), cfg = JSON.parse(localStorage.getItem('edu_cfg')||'{"pin":"0000","msg":"","pix":""}');
+        let curId=null, tmpPrice=0, tmpAC=0, tmpRC=0, tmpCred=0;
+
+        function SaveAll() { localStorage.setItem('edu_db',JSON.stringify(db)); localStorage.setItem('edu_exp',JSON.stringify(exp)); localStorage.setItem('edu_srv',JSON.stringify(srv)); localStorage.setItem('edu_cfg',JSON.stringify(cfg)); }
+        function Toast(m) { let x=document.createElement('div');x.className='toast show';x.innerText=m;$('toast-container').appendChild(x);setTimeout(()=>x.remove(),3000); }
+        function Nav(v) { document.querySelectorAll('[id^="view-"]').forEach(e=>e.classList.add('hidden')); $(`view-${v}`).classList.remove('hidden'); if(v==='home')Render(); if(v==='finance')RenderFinance('month'); if(v==='expenses')RenderExp(); }
+        function Login() { if($('pin-input').value===cfg.pin){$('screen-login').classList.add('hidden');Nav('home');}else Toast('Senha errada'); }
+
+        // --- CLIENTS ---
+        function Render() {
+            let h='', t=$('search').value.toLowerCase();
+            db.filter(c=>!c.del && (c.n+c.s).toLowerCase().includes(t)).sort((a,b)=>new Date(a.exp)-new Date(b.exp)).forEach(c=>{
+                let d=Math.ceil((new Date(c.exp)-new Date())/86400000), color=d<0?'#ef4444':d<=3?'#f97316':'#22c55e';
+                h += `<div class="card" style="border-left:4px solid ${color};padding:12px"><div class="flex" style="justify-content:space-between"><div><b>${c.n}</b><br><span class="text-xs text-muted">${c.s}</span></div><span class="tag" style="color:${color}">${d<0?'VENCIDO':d+' DIAS'}</span></div>
+                <div class="flex mt-2"><button onclick="PayModal(${c.id})" class="btn bg-green" style="padding:8px;flex:2">💲 Pagar</button><button onclick="Wpp(${c.id})" class="btn bg-slate" style="padding:8px;flex:1">💬</button><button onclick="Edit(${c.id})" class="btn bg-slate" style="padding:8px">✏️</button><button onclick="Arc(${c.id})" class="btn bg-red" style="padding:8px">🗑</button></div></div>`;
+            });
+            $('list-container').innerHTML = h; $('total-clients').innerText = db.filter(c=>!c.del).length;
+        }
+
+        // --- PAYMENT ---
+        function PayModal(id) {
+            let c=db.find(x=>x.id==id); if(!c)return;
+            curId=id; tmpPrice=c.pr; tmpAC=c.ca; tmpRC=c.cr; tmpCred=c.cred||0;
+            $('payment-modal').style.display='flex'; $('pm-date').value=new Date().toISOString().split('T')[0];
+            $('pm-renewal-period').value='1'; $('pm-cost-type').value=c.pay.length?'renewal':'activation';
+            if(tmpCred>0){$('credit-alert').classList.remove('hidden');$('credit-val').innerText=tmpCred;}else $('credit-alert').classList.add('hidden');
+            UpdatePaymentMath();
+        }
+        function UpdatePaymentMath() {
+            let p=parseInt($('pm-renewal-period').value), tot=tmpPrice*p, fin=Math.max(0, tot-tmpCred);
+            let ct=$('pm-cost-type').value, cost = (ct=='activation'?tmpAC:ct=='renewal'?tmpRC:0)*p;
+            $('pm-amount').value=fin.toFixed(2);
+            $('pm-math-summary').innerHTML=`Bruto: ${ToBRL(tot)} ${tmpCred>0?'- Crédito':''} = <b>Receber: ${ToBRL(fin)}</b><br>Custo: ${ToBRL(cost)}`;
+        }
+        function ConfirmPayment() {
+            let c=db.find(x=>x.id==curId), amt=parseFloat($('pm-amount').value), dt=$('pm-date').value, p=parseInt($('pm-renewal-period').value), ct=$('pm-cost-type').value;
+            if(!dt)return;
+            let cost=(ct=='activation'?c.ca:ct=='renewal'?c.cr:0)*p;
+            if(c.cred>0) c.cred = Math.max(0, c.cred - (c.pr*p));
+            c.pay.push({d:dt, a:amt, c:cost});
+            let base = new Date(c.exp); let payD = new Date(dt);
+            c.exp = AddMonths((base<payD?payD:base).toISOString().split('T')[0], p);
+            SaveAll(); closePaymentModal(); Render(); Toast('Pago!');
+        }
+        function closePaymentModal() { $('payment-modal').style.display='none'; }
+
+        // --- FORM ---
+        function OpenForm() { curId=null; ['f-name','f-phone','f-price','f-act-cost','f-ren-cost','f-notes','f-credit'].forEach(x=>$(x).value=''); $('f-date').value=new Date().toISOString().split('T')[0]; $('danger-zone').classList.add('hidden'); SrvSel(); Nav('form'); }
+        function Edit(id) { let c=db.find(x=>x.id==id); curId=id; $('f-name').value=c.n; $('f-phone').value=c.ph; $('f-price').value=c.pr; $('f-act-cost').value=c.ca; $('f-ren-cost').value=c.cr; $('f-date').value=c.dt; $('f-expire').value=c.exp; $('f-notes').value=c.nt||''; $('f-credit').value=c.cred||''; $('danger-zone').classList.remove('hidden'); SrvSel(c.s); CalcMargin(); Nav('form'); }
+        function CalcMargin() { let p=parseFloat($('f-price').value)||0, c=Math.max(parseFloat($('f-act-cost').value)||0, parseFloat($('f-ren-cost').value)||0); $('f-margin').value = ToBRL(p-c); }
+        function SaveClient() {
+            let n=$('f-name').value; if(!n)return Toast('Nome obrigatório');
+            let o={id:curId||Date.now(), n:n, ph:$('f-phone').value, s:$('f-server').value, pr:parseFloat($('f-price').value)||0, ca:parseFloat($('f-act-cost').value)||0, cr:parseFloat($('f-ren-cost').value)||0, dt:$('f-date').value, exp:$('f-expire').value, nt:$('f-notes').value, cred:parseFloat($('f-credit').value)||0, pay:curId?db.find(x=>x.id==curId).pay:[], del:false};
+            if(o.pr<0||o.ca<0||o.cr<0) return Toast('Valores não podem ser negativos');
+            if(curId) db=db.map(x=>x.id==curId?o:x); else db.push(o);
+            SaveAll(); Nav('home'); Toast('Salvo');
+        }
+        function HardDelete() { if(confirm('Excluir tudo?')){db=db.filter(x=>x.id!=curId);SaveAll();Nav('home');} }
+        function Arc(id) { if(confirm('Arquivar?')){db.find(x=>x.id==id).del=true;SaveAll();Render();} }
+        function SrvSel(s='') { $('f-server-div').innerHTML=`<label>Servidor</label><select id="f-server" class="input"><option value="">--</option>${srv.map(x=>`<option ${x==s?'selected':''}>${x}</option>`).join('')}</select>`; }
+
+        // --- FINANCE ---
+        function RenderFinance(p) {
+            let rev=0, cost=0, sMap={};
+            db.forEach(c=>{
+                let sn = c.s||'Outros'; if(!sMap[sn])sMap[sn]={r:0,c:0};
+                c.pay.forEach(py=>{ if(IsWithin(py.d,p)){rev+=py.a; cost+=py.c; sMap[sn].r+=py.a; sMap[sn].c+=py.c;} });
+            });
+            exp.forEach(e=>{ if(IsWithin(e.d,p)) cost+=e.a; }); // Simplificado
+            $('fin-profit').innerText=ToBRL(rev-cost); $('fin-rev').innerText=ToBRL(rev); $('fin-cost').innerText=ToBRL(cost);
+            $('fin-by-server-container').innerHTML = Object.keys(sMap).map(k=>`<div class="card p-2 flex" style="justify-content:space-between"><span>${k}</span><span>${ToBRL(sMap[k].r-sMap[k].c)}</span></div>`).join('');
+        }
+
+        // --- MISC ---
+        function Wpp(id) { let c=db.find(x=>x.id==id), t=cfg.msg.replace('{nome}',c.n).replace('{vencimento}',c.exp.split('-').reverse().join('/')).replace('{valor}',ToBRL(c.pr)).replace('{chave_pix}',cfg.pix); window.open(`https://wa.me/${c.ph}?text=${encodeURIComponent(t)}`); }
+        function AddServer(){ let n=$('new-server-name').value; if(n){srv.push(n);SaveAll();SrvList();$('new-server-name').value='';} }
+        function SrvList(){ $('server-list-container').innerHTML=srv.map(s=>`<div class="flex" style="justify-content:space-between;border-bottom:1px solid #333;padding:5px"><span>${s}</span><button onclick="srv=srv.filter(x=>x!='${s}');SaveAll();SrvList()" class="btn bg-red" style="padding:4px">X</button></div>`).join(''); }
+        function SaveExpense(){ exp.push({id:Date.now(),d:$('e-desc').value,a:parseFloat($('e-amount').value),dt:$('e-date').value}); SaveAll(); RenderExp(); }
+        function RenderExp(){ $('expense-list-container').innerHTML=exp.map(e=>`<div class="card p-2 flex" style="justify-content:space-between"><span>${e.d}</span><span style="color:#f87171">${ToBRL(e.a)}</span><button onclick="exp=exp.filter(x=>x.id!=${e.id});SaveAll();RenderExp()">X</button></div>`).join(''); }
+        function SaveConfig() { cfg.pix=$('cfg-pix-key').value; cfg.msg=$('msg-template').value; SaveAll(); Toast('Salvo'); }
+        function DownloadBackup() { 
+            let a=document.createElement('a'); 
+            a.href=URL.createObjectURL(new Blob([JSON.stringify({db,exp,srv,cfg})],{type:'application/json'})); 
+            a.download=`backup_eduplay_${new Date().toISOString().slice(0,10)}.json`; 
+            a.click(); 
+        }
+        function UploadBackup(i) { let r=new FileReader(); r.onload=e=>{let d=JSON.parse(e.target.result); db=d.db;exp=d.exp;srv=d.srv;cfg=d.cfg;SaveAll();location.reload();}; r.readAsText(i.files[0]); }
+        
+        // Init
+        window.onload=()=>{ 
+            if(cfg.pin==="0000")$('screen-login').classList.add('hidden'); 
+            $('msg-template').value=cfg.msg; $('cfg-pix-key').value=cfg.pix; SrvList(); Render();
+            $('e-date').value=new Date().toISOString().split('T')[0];
+        };
+    </script>
+</body>
+</html>
